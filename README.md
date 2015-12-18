@@ -6,7 +6,7 @@ This repository contains the files needed to deploy a micro-service to ECS using
 The steps are as follows
 
 1. In the project's Jenkins build plan, after the project has been built, a build-step is added to call the template `template_docker_image.sh`. This script gathers information about the image using environment variables, checks security variables to ensure that an image that should be private does not push to a private repository, builds the image, pushes the image to docker hub, and deletes the image locally.
-2. During the promotion process, the `cfn-promote.sh` script is called. This script leverages the aws cli to create a cloudformation stack. The script also decides whether to update or create a stack, by checking if the stack exists and is in an updatable state, performs the creation/update, and waits for the creation to either complete succesfully, ensure the stack rolls back if it does not, and if the stack was created, deletes the stack if it rolls back. (This is because the stack would not have anything to roll back to, therefor, would result in an unupdatable stack)
+2. During the promotion process, the `cfn-promote.sh` script is called. This script leverages the AWS CLI to create a CloudFormation stack. The script also decides whether to update or create a stack, by checking if the stack exists and is in an updatable state, performs the creation/update, and waits for the creation to either complete successfully, ensure the stack rolls back if it does not, and if the stack was created, deletes the stack if it rolls back. (This is because the stack would not have anything to roll back to, therefore, would result in an unupdatable stack)
 
 ### File specifics
 
@@ -18,7 +18,7 @@ This is a sample dockerfile that is used with node.js microservices. Very basic 
 
 This script contains multiple phases in order to build and push an image to dockerhub.com
 
-The first step is gathering environment variables for the push. These values have defaults set in the script itself, but can be overriden by injecting the following environment variables.
+The first step is gathering environment variables for the push. These values have defaults set in the script itself, but can be overridden by injecting the following environment variables.
 
 | Environment Variable | Required | Default                                                     | Usage                                                                                                         |
 |----------------------|----------|-------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
@@ -26,7 +26,7 @@ The first step is gathering environment variables for the push. These values hav
 | `DOCKER_PROJECT_TITLE` | No       | Uses `PROJECT_TITLE` environment variable from Jenkins        | Sets `PROJECT_TITLE` in the script which is used in the repository name on dockerhub. e.g. `BASENAME/someProject` |
 | `DOCKER_REPO_TYPE`     | No       | Uses `DOCKER_REPO_SECURITY` environment variable from Jenkins |                                                                                                               |
 
-The next step ensures docker files exists to successfuly use the docker commands including the docker credentials to push an image to a private repository
+The next step ensures docker files exists to successfully use the docker commands including the docker credentials to push an image to a private repository
 
 The first step is to ensure that docker.sock was mounted. Since these docker commands run on docker containers, we mount the `docker.sock` file to be able to execute docker commands within the containers.
 Next is to ensure that `/bin/docker` exists so we are able to issue those commands through docker.sock. Also, to be able to push images to private repositories, we make sure that the `dockercfg` file exists, which contains credentials needed to do just that.
@@ -42,7 +42,7 @@ At this point, if something goes wrong with building the image, the script will 
 
 Assuming there was no error, we are ready to push the image to dockerhub.
 
-The way our dockerhub repo is configered, when a new repo is created, it is set to `private`. This is for security reasons. Therefor, we need to make sure that we are pushing proprietary code to private repos only. This is done by first curling docker hub, and storing the return code.
+The way our dockerhub repo is configured, when a new repo is created, it is set to `private`. This is for security reasons. Therefore, we need to make sure that we are pushing proprietary code to private repos only. This is done by first curling docker hub, and storing the return code.
 
 If the variable `DOCKER_REPO_SECURITY` is set to `public`, we expect the repo to exist first before being able to push to it. If set to private and the curl returns with a code of `200`, we stop the push to protect against sending images with proprietary code to a public repo.
 
@@ -62,7 +62,7 @@ We use 2 CPU alarms to monitor 2 different characteristics of CPU usage. The fir
 
 ### `*.cfn.yaml`
 
-This file contains all the infromation we need to deploy a service on CloudFormation. Essentially, this is what contains all the parameters that get passed into the CloudFormation template. ex. Image name, SSL cert, etc.
+This file contains all the information we need to deploy a service on CloudFormation. Essentially, this is what contains all the parameters that get passed into the CloudFormation template. Ex. Image name, SSL cert, etc.
 
 We read this file using shyaml. An open source project on github.
 
@@ -79,7 +79,7 @@ This script needs 2 parameters passed into it. Those parameters are:
 
 This script makes calls to the AWS CLI. Therefore, it assumes that the environment variables required are already set. (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`)
 
-Depending on the way you prefer things, you may opt to use a different method of configuring your aws cli. For more informaiton on this, use the following link:
+Depending on the way you prefer things, you may opt to use a different method of configuring your aws cli. For more information on this, use the following link:
 http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html
 
 The first steps are self explanatory. We check if our deployment rules file exists, then start extracting the values that are needed first from them.
@@ -92,6 +92,6 @@ If the stack is in an updatable state, we then perform an `update-stack` operati
 
 In case the same build plan was promoted again (for example, to rerun automation tests), we also check if the operation returns a "No updates are to be performed" message, which should not fail a build. Otherwise, we enter a while loop that checks the status of the newly created/updated stack to ensure that the deployment will be completed without errors.
 
-In case of an error, we wait for 5 minutes before checking to see if the stack rolled back succesfully. Also, if the operation we used was `create-stack`, we output the stack events before we delete the stack since this stack will never be in an updatable state. (Only from failing to create-stack)
+In case of an error, we wait for 5 minutes before checking to see if the stack rolled back successfully. Also, if the operation we used was `create-stack`, we output the stack events before we delete the stack since this stack will never be in an updatable state. (Only from failing to create-stack)
 
 The next steps create the alarms for the service only if an environment variable labeled `SERVICE_ALARM_ENDPOINT` exists, which contains the value of the SNS Subscription used in the template. The process is very similar to the previous steps. 
