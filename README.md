@@ -19,10 +19,6 @@ Note: The template is called as follows:
 
 ### File specifics
 
-#### `Dockerfile`
-
-This is a sample dockerfile that is used with node.js microservices. Very basic and easy to understand.
-
 ### `template_docker_image.sh`
 
 This script contains multiple phases in order to build and push an image to dockerhub.com
