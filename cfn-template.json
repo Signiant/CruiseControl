@@ -1,0 +1,186 @@
+{
+	"AWSTemplateFormatVersion" : "2010-09-09",
+	"Description" : "Description of what this template contains. i.e. which service it runs",
+	"Parameters" : {
+		"AWSREGION" : {
+			"Description" : "Application config parameter (Region name)",
+			"Type" : "String",
+			"Default" : ""
+		},
+		"CONFIGFILE" : {
+			"Description" : "Full path of the config file to use from S3",
+			"Type": "String",
+			"Default": ""
+		}, 
+		"S3REGION" : {
+			"Description" : "S3 region",
+			"Type" : "String",
+			"Default" : ""
+		}, 
+		"HOSTPORT" : {
+			"Description" : "Host port",
+			"Type" : "String",
+			"Default" : ""
+		}, 
+		"CLUSTERNAME" : {
+			"Description" : "The name of the cluster to use",
+			"Type" : "String",
+			"Default" : ""
+		}, 
+		"IMAGENAME" : {
+			"Description" : "The name of the dockerhub image. i.e. example/service:tag",
+			"Type" : "String",
+			"Default" : ""
+		}, 
+		"CONTAINERNAME" : {
+			"Description" : "The name of the docker container",
+			"Type" : "String",
+			"Default" : ""
+		},
+		"DNSPREFIX" : {
+			"Description" : "(Optional) [DNS Record] Prefix for the ELB DNS Record",
+			"Type" : "String",
+			"Default" : ""
+		},
+		"DNSZONE" : {
+			"Description" : "(Optional) [DNS Record] Route53-hosted zone to use for the ELB's DNS record (<prefix>.<zone>)",
+			"Type" : "String",
+			"Default" : ""
+		},
+		"TASKDESIREDCOUNT" : {
+			"Description" : "[Task] Desired number of running tasks",
+			"Type" : "String",
+			"Default" : ""
+		},
+		"LOADBALANCERSUBNETS" : {
+			"Description" : "(Required) [Load Balancer] List of subnets",
+			"Type" : "List<AWS::EC2::Subnet::Id>"
+		},
+		"SERVICEROLE" : {
+			"Description" : "[Service] Name of the role",
+			"Type" : "String"
+		},
+		"LOADBALANCERSECURITYGROUP" : {
+			"Description" : "(Required) [Load Balancer] The security group of the load balancer",
+			"Type" : "AWS::EC2::SecurityGroup::Id"
+		},
+		"CONTAINERPORT" : {
+			"Description" : "[Service] The port on the container",
+			"Type" : "String",
+			"Default" : ""
+		},
+		"LBSSLCERT" : {
+			"Description" : "[Load Balancer] SSL Certificate ARN",
+			"Type" : "String"
+		},
+		"REQUIREDCPU" : {
+			"Description" : "[TaskDef] The required CPU usage based on a 1-1024 scale",
+			"Type" : "String",
+			"Default" : "10"
+		},
+		"REQUIREDMEMORY" : {
+			"Description" : "[TaskDef] The requried memory needed in MB",
+			"Type" : "String",
+			"Default" : "100"
+		}
+	},
+
+	"Conditions" : {
+		"CreateDnsEntry" : { "Fn::And" : [
+			{ "Fn::Not" : [{ "Fn::Equals" : [{ "Ref" : "DNSPREFIX" }, ""]}]},
+			{ "Fn::Not" : [{ "Fn::Equals" : [{ "Ref" : "DNSZONE" }, ""]}]}
+		]}
+	},
+
+	"Resources" : {
+		"TaskName" : {
+			"Type" : "AWS::ECS::TaskDefinition",
+			"Properties" : {
+				"ContainerDefinitions" : [
+					{
+						"Cpu" : { "Ref" : "REQUIREDCPU" },
+						"Environment" : [{
+								"Name": "AWS_REGION",
+								"Value" : { "Ref" : "AWSREGION" }
+							},{
+								"Name" : "CONFIG_FILE",
+								"Value" : { "Ref" : "CONFIGFILE" }
+							},{
+								"Name" : "AWS_S3_REGION",
+								"Value" : { "Ref" : "S3REGION" }
+							}
+						],
+						"Essential" : true,
+						"Image" : { "Ref" : "IMAGENAME" },
+						"Memory" : { "Ref" : "REQUIREDMEMORY" },
+						"Name" : { "Ref" : "CONTAINERNAME" },
+						"PortMappings" : [
+							{
+								"ContainerPort" : { "Ref" : "CONTAINERPORT" },
+								"HostPort" : {"Ref" : "HOSTPORT"}
+							}
+						]
+					}
+				],
+				"Volumes" : []
+			}
+		},
+		
+		"ServiceName" : {
+			"Type" : "AWS::ECS::Service",
+			"Properties" : {
+				"Cluster" : { "Ref" : "CLUSTERNAME" },
+				"DesiredCount" : { "Ref" : "TASKDESIREDCOUNT" },
+				"TaskDefinition" : { "Ref" : "TaskName" },
+				"LoadBalancers" : [{
+					"LoadBalancerName" : { "Ref" : "ServiceLoadBalancer" },
+					"ContainerPort" : { "Ref" : "CONTAINERPORT" },
+					"ContainerName" : { "Ref" : "CONTAINERNAME" }
+				}],
+				"Role" : { "Ref" : "SERVICEROLE" }
+			}
+		},
+		"ServiceLoadBalancer" : {
+			"Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
+			"Properties" : {
+				"Subnets" : { "Ref" : "LOADBALANCERSUBNETS" },
+				"HealthCheck" : {
+					"Target" : { "Fn::Join" : [ "", [ "HTTP:", { "Ref" : "HOSTPORT" }, "/healthcheck" ]]},
+					"HealthyThreshold" : "3",
+					"UnhealthyThreshold" : "5",
+					"Interval" : "30",
+					"Timeout" : "10"
+				},
+				"SecurityGroups" : [
+					{ "Ref" : "LOADBALANCERSECURITYGROUP" }
+				],
+				"Listeners" : [
+				{
+					"InstancePort" : { "Ref" : "HOSTPORT" },
+					"LoadBalancerPort" : "443",
+					"Protocol" : "HTTPS",
+					"SSLCertificateId" : { "Ref" : "LBSSLCERT" }
+				}]
+			}
+		},
+		"DNSRecord" : {
+			"Condition" : "CreateDnsEntry",
+			"Type" : "AWS::Route53::RecordSet",
+			"Properties" : {
+				"AliasTarget" : {
+					"HostedZoneId" : { "Fn::GetAtt" : [ "ServiceLoadBalancer", "CanonicalHostedZoneNameID" ] },
+					"DNSName" : { "Fn::GetAtt" : [ "ServiceLoadBalancer", "CanonicalHostedZoneName" ] }
+				},
+				"HostedZoneName" : { "Fn::Join" : [ "", [ { "Ref" : "DNSZONE" }, "."]] },
+				"Name" : { "Fn::Join" : [ "", [ {"Ref" : "DNSPREFIX" }, ".", { "Ref" : "DNSZONE" }, "." ]]},
+				"Type" : "A"
+			}
+		}
+	},
+	"Outputs" : {
+		"ServiceARN" : {
+			"Description" : "The name of the created Service",
+			"Value" : { "Ref" : "ServiceName"}
+		}
+	}
+}
