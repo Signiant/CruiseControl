@@ -1,4 +1,4 @@
-# Micro-service deployment process using Jenkins, CloudFormation, and EC2 Container Service
+# Micro-service deployment process using Jenkins, CloudFormation, and Docker
 
 ### Overview
 
