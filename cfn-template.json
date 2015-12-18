@@ -2,18 +2,18 @@
 	"AWSTemplateFormatVersion" : "2010-09-09",
 	"Description" : "Description of what this template contains. i.e. which service it runs",
 	"Parameters" : {
-		"AWSREGION" : {
-			"Description" : "Application config parameter (Region name)",
+		"MYCONTAINERVAR1" : {
+			"Description" : "Application Environment Variable 1",
 			"Type" : "String",
 			"Default" : ""
 		},
-		"CONFIGFILE" : {
-			"Description" : "Full path of the config file to use from S3",
+		"MYCONTAINERVAR2" : {
+			"Description" : "Application Environment Variable 2",
 			"Type": "String",
 			"Default": ""
 		}, 
-		"S3REGION" : {
-			"Description" : "S3 region",
+		"MYCONTAINERVAR3" : {
+			"Description" : "Application Environment Variable 3",
 			"Type" : "String",
 			"Default" : ""
 		}, 
@@ -100,14 +100,14 @@
 					{
 						"Cpu" : { "Ref" : "REQUIREDCPU" },
 						"Environment" : [{
-								"Name": "AWS_REGION",
-								"Value" : { "Ref" : "AWSREGION" }
+								"Name": "VAR1",
+								"Value" : { "Ref" : "MYCONTAINERVAR1" }
 							},{
-								"Name" : "CONFIG_FILE",
-								"Value" : { "Ref" : "CONFIGFILE" }
+								"Name" : "VAR2",
+								"Value" : { "Ref" : "MYCONTAINERVAR2" }
 							},{
-								"Name" : "AWS_S3_REGION",
-								"Value" : { "Ref" : "S3REGION" }
+								"Name" : "VAR3",
+								"Value" : { "Ref" : "MYCONTAINERVAR3" }
 							}
 						],
 						"Essential" : true,

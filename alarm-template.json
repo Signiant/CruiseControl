@@ -33,16 +33,16 @@
   "Mappings" : {
     "SNSMap" : {
       "General" : {
-        "endpoint" : "https://alert.victorops.com/integrations/"
+        "endpoint" : "general-alerts@company.com"
       },
       "Dev" : {
-        "endpoint" : "https://alert.victorops.com/integrations/"
+        "endpoint" : "dev-alerts@company.com"
       },
       "Prod" : {
-        "endpoint" : "https://alert.victorops.com/integrations/"
+        "endpoint" : "prod-alerts@company.com"
       },
       "Stage" : {
-        "endpoint" : "https://alert.victorops.com/integrations/"
+        "endpoint" : "stage-alerts@company.com"
       }
     }
   },
@@ -54,7 +54,7 @@
         "TopicName" : { "Fn::Join" : ["-", ["ECS", "Monitoring", { "Ref" : "ServiceName"}]]} ,
         "Subscription" : [ {
           "Endpoint" : { "Fn::FindInMap" : [ "SNSMap", { "Ref" : "SNSSubscription" }, "endpoint"]},
-          "Protocol" : "https"
+          "Protocol" : "email"
          } ]
       }
     },

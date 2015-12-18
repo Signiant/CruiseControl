@@ -1,8 +1,8 @@
 cloudformation:
   parameters:
-    AWSREGION: "##-application.aws.cfn.region##"
-    AWSS3REGION: "##-application.aws.s3.region##"
-    CONFIGFILE: "##-application.config.rootBucket##/##-application.config.filename##"
+    MYCONTAINERVAR1: "##-application.env.var1##"
+    MYCONTAINERVAR2: "##-application.env.var2##"
+    MYCONTAINERVAR3: "##-application.env.var3##"
     HOSTPORT: "##-application.aws.ecs.hostPort##"
     CLUSTERNAME: "##-application.aws.ecs.clusterName##"
     IMAGENAME: "##-application.aws.ecs.imageName##"
