@@ -4,7 +4,7 @@
 
 This repository contains the files needed to deploy a micro-service to ECS using CloudFormation
 
-The following diagram shows the major componenets of this process.
+The following diagram shows the major components of this process.
 
 ![ECS Deployment Diagram](/images/deploymentdiagram.png?raw=true)
 
