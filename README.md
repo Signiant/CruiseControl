@@ -6,14 +6,14 @@ This repository contains the files needed to deploy a micro-service to ECS using
 
 The following diagram shows the major componenets of this process.
 
-![ECS Deployment Diagram](https://github.com/Signiant/CruiseControl/tree/master/images/deploymentdiagram.png)
+![ECS Deployment Diagram](/images/deploymentdiagram.png?raw=true)
 
 The steps are as follows
 
 1. In the project's Jenkins build plan, after the project has been built, a build-step is added to call the template `template_docker_image.sh`. This script gathers information about the image using environment variables, checks security variables to ensure that an image that should be private does not push to a private repository, builds the image, pushes the image to docker hub, and deletes the image locally.
 
 Note: The template is called as follows:
-![Calling template_docker_image.sh](https://github.com/Signiant/CruiseControl/tree/master/images/usebuilders.png)
+![Calling template_docker_image.sh](/images/usebuilders.png?raw=true)
 
 2. During the promotion process, the `cfn-promote.sh` script is called. This script leverages the AWS CLI to create a CloudFormation stack. The script also decides whether to update or create a stack, by checking if the stack exists and is in an updatable state, performs the creation/update, and waits for the creation to either complete successfully, ensure the stack rolls back if it does not, and if the stack was created, deletes the stack if it rolls back. (This is because the stack would not have anything to roll back to, therefore, would result in an unupdatable stack)
 
