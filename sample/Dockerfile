@@ -1,11 +1,5 @@
-FROM node:0.10.39
+FROM python:2-onbuild
 
-RUN mkdir -p /usr/src/app
+EXPOSE 5000
 
-WORKDIR /usr/src/app
-
-COPY . /usr/src/app
-
-EXPOSE 8080
-
-CMD [ "npm", "start" ]
+CMD [ "python", "./aws-ip-list-service.py" ]

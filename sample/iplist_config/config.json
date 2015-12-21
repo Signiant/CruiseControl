@@ -1,0 +1,14 @@
+{
+    "apps": [{
+        "name": "app_name",
+        "config": [{
+            "dnsname": "example.com",
+            "beanstalk_app_name": "App_example",
+            "region": "us-west-1",
+            "exclusions": [],
+            "show_eip": true,
+            "show_lb_ip": true,
+            "show_inst_ip": true
+        }]
+    }]
+}

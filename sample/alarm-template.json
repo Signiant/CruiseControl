@@ -1,0 +1,131 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+
+  "Description" : "Cloudwatch Alarm Creation Stack",
+  "Parameters" : {
+    "ServiceName" : {
+      "Description" : "Name of the service to attach alarms to",
+      "Type" : "String",
+      "Default" : ""
+    },
+    "AlarmCpuUtilization" : {
+      "Description" : "Threshold for CPU",
+      "Type" : "String",
+      "Default" : "80"
+    },
+    "AlarmMemoryUtilization" : {
+      "Description" : "Threshold for Memory",
+      "Type" : "String",
+      "Default" : "80"
+    },
+    "SNSSubscription" : {
+      "Description" : "The SNS Topic to subscribe to",
+      "Type" : "String",
+      "Default" : "Dev",
+      "AllowedValues" : [ "General", "Dev", "Prod", "Stage" ]
+    },
+    "ECSClusterName" : {
+      "Description" : "Name of the service's cluster",
+      "Type" : "String",
+      "Default" : ""
+    }
+  },
+  "Mappings" : {
+    "SNSMap" : {
+      "General" : {
+        "endpoint" : "general-alerts@company.com"
+      },
+      "Dev" : {
+        "endpoint" : "dev-alerts@company.com"
+      },
+      "Prod" : {
+        "endpoint" : "prod-alerts@company.com"
+      },
+      "Stage" : {
+        "endpoint" : "stage-alerts@company.com"
+      }
+    }
+  },
+  "Resources" : {
+
+    "SNSTopic" : {
+    "Type" : "AWS::SNS::Topic",
+      "Properties" : {
+        "TopicName" : { "Fn::Join" : ["-", ["ECS", "Monitoring", { "Ref" : "ServiceName"}]]} ,
+        "Subscription" : [ {
+          "Endpoint" : { "Fn::FindInMap" : [ "SNSMap", { "Ref" : "SNSSubscription" }, "endpoint"]},
+          "Protocol" : "email"
+         } ]
+      }
+    },
+    "CPUAlarmLoad" : {
+    "Type" : "AWS::CloudWatch::Alarm",
+      "Properties" : {
+        "AlarmDescription" : { "Fn::Join" : [ "", ["Service CPU utilization higher than ", { "Ref" : "AlarmCpuUtilization" } ]] },
+        "AlarmName" : { "Fn::Join" : [ " ", ["Service CPU Load", { "Ref" : "ServiceName" } ]] },
+        "AlarmActions" : [ { "Ref" : "SNSTopic" } ],
+        "ComparisonOperator" : "GreaterThanThreshold",
+        "Dimensions" : [ { 
+          "Name" : "ClusterName", 
+          "Value" : { "Ref" : "ECSClusterName" } 
+          },{
+            "Name" : "ServiceName",
+            "Value" : { "Ref" : "ServiceName" }
+          } ],
+        "EvaluationPeriods" : "4",
+        "MetricName" : "CPUUtilization",
+        "Namespace" : "AWS/ECS",
+        "Period" : "300",
+        "Statistic" : "Average",
+        "Threshold" : { "Ref" : "AlarmCpuUtilization" },
+        "Unit" : "Percent"
+   }
+},
+    "CPUAlarmResources" : {
+    "Type" : "AWS::CloudWatch::Alarm",
+      "Properties" : {
+        "AlarmDescription" : "Service CPU utilization constantly higher than 200%",
+        "AlarmName" : { "Fn::Join" : [ " ", ["Service CPU Resource", { "Ref" : "ServiceName" } ]] },
+        "AlarmActions" : [ { "Ref" : "SNSTopic" } ],
+        "ComparisonOperator" : "GreaterThanThreshold",
+        "Dimensions" : [ { 
+          "Name" : "ClusterName", 
+          "Value" : { "Ref" : "ECSClusterName" } 
+          },{
+            "Name" : "ServiceName",
+            "Value" : { "Ref" : "ServiceName" }
+          } ],
+        "EvaluationPeriods" : "5",
+        "MetricName" : "CPUUtilization",
+        "Namespace" : "AWS/ECS",
+        "Period" : "300",
+        "Statistic" : "Average",
+        "Threshold" : "200",
+        "Unit" : "Percent"
+   }
+},
+    "MemoryAlarm" : {
+      "Type" : "AWS::CloudWatch::Alarm",
+      "Properties" : {
+        "AlarmDescription" : { "Fn::Join" : [ "", ["Service Memory utilization higher than ", { "Ref" : "AlarmMemoryUtilization" } ]] },
+        "AlarmName" : { "Fn::Join" : [ " ", ["Service Memory Load", { "Ref" : "ServiceName" } ]] },
+        "AlarmActions" : [ { "Ref" : "SNSTopic" } ],
+        "ComparisonOperator" : "GreaterThanThreshold",
+        "Dimensions" : [ { 
+          "Name" : "ClusterName", 
+          "Value" : { "Ref" : "ECSClusterName" } 
+          },{
+          "Name" : "ServiceName",
+          "Value" : { "Ref" : "ServiceName" }
+          } ],
+        "EvaluationPeriods" : "3",
+        "MetricName" : "MemoryUtilization",
+        "Namespace" : "AWS/ECS",
+        "Period" : "300",
+        "Statistic" : "Average",
+        "Threshold" : { "Ref" : "AlarmMemoryUtilization" },
+        "Unit" : "Percent"
+      }
+    }
+  }
+}
