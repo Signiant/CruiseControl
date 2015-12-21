@@ -1,3 +1,0 @@
-[submodule "sample/app"]
-	path = sample/app
-	url = https://github.com/Signiant/aws-ip-list-service.git
