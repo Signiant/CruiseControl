@@ -16,9 +16,18 @@ PROJECTTITLE=${PROJECT_TITLE}
 echo "Project title set to $PROJECTTITLE"
 
 if [ ! -z "$DOCKER_PROJECT_TITLE" ]; then
-	PROJECTTITLE="$DOCKER_PROJECT_TITLE"
-	echo "Project title changed to $PROJECTTITLE"
+    PROJECTTITLE="$DOCKER_PROJECT_TITLE"
+    echo "Project title changed to $PROJECTTITLE"
 fi
+
+BUILD_DIR="./$PROJECTTITLE"
+echo "Docker build directory set to $BUILD_DIR"
+
+if [ ! -z "$DOCKER_BUILD_DIR" ]; then
+    BUILD_DIR="./$DOCKER_BUILD_DIR"
+    echo "Docker build directory changed to $BUILD_DIR"
+fi
+
 
 DOCKER_REPO_SECURITY="private"
 
@@ -55,8 +64,7 @@ echo "Found."
 
 echo "Building image..."
 echo "Moving into app folder.."
-cd ./$PROJECTTITLE
-cd ./app
+cd "$BUILD_DIR"
 echo "Starting docker build at $(date +%H:%M:%S)"
 docker build -t $BASENAME/$PROJECTTITLE:${PROJECT_BRANCH}-${BUILD_NUMBER} .
 CMDRET=$?
