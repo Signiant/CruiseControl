@@ -104,11 +104,11 @@ while [ $MAXTRIES -ne $TRY ] && [ $CMDRET -ne 0 ]; do
     echo "Push failed. Sleeping $DELAY seconds before trying again."
     sleep $DELAY
   fi
-  
+
   echo "Starting docker push attempt number ${TRY} at $(date +%H:%M:%S)"
   docker push -f $BASENAME/$PROJECTTITLE:${PROJECT_BRANCH}-${BUILD_NUMBER}
   CMDRET=$?
-  (( TRY++ ))
+  : $(( TRY++ ))
 done
 
 if [ $CMDRET -eq 0 ]; then
