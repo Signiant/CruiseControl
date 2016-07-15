@@ -1,5 +1,14 @@
 #!/bin/bash
 
+# rather than change every echo statement...
+# alias stdout
+exec 3>&1
+# option to output everything to stderr
+# except things explicitly redirected to 3
+if [ -n "$REDIRECT_MESSAGES" ]; then
+    exec 1>&2
+fi
+
 echo "***********************************************************************"
 echo "****************** Configuring and Error Checking *********************"
 echo "***********************************************************************"
@@ -119,3 +128,6 @@ else
 	echo "*** ERROR! Docker push failed"
     exit 1
 fi
+
+# finally, output the full name of container
+echo "$DOCKER_FULL_NAME" 1>&3
