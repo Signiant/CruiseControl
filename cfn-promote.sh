@@ -6,7 +6,7 @@
 ENVIRONMENT=$1
 BUILD_PATH=$2
 
-CFN_DEPLOY_RULES=${BUILD_PATH}/deploy/${ENVIRONMENT}.cfn.yaml
+CFN_DEPLOY_RULES="$(readlink -f "${BUILD_PATH}/deploy/${ENVIRONMENT}.cfn.yaml")"
 
 echo "************************************************************************"
 echo "************************ Checking Status of CFN ************************"
