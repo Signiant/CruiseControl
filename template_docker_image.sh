@@ -74,8 +74,10 @@ echo "Found."
 echo "Building image..."
 echo "Moving into app folder.."
 cd "$BUILD_DIR"
+
+DOCKER_FULL_NAME="$BASENAME/$PROJECTTITLE:${PROJECT_BRANCH}-${BUILD_NUMBER}"
 echo "Starting docker build at $(date +%H:%M:%S)"
-docker build -t $BASENAME/$PROJECTTITLE:${PROJECT_BRANCH}-${BUILD_NUMBER} .
+docker build -t "$DOCKER_FULL_NAME" .
 CMDRET=$?
 
 echo "Docker build complete at $(date +%H:%M:%S)"
@@ -115,15 +117,15 @@ while [ $MAXTRIES -ne $TRY ] && [ $CMDRET -ne 0 ]; do
   fi
 
   echo "Starting docker push attempt number ${TRY} at $(date +%H:%M:%S)"
-  docker push -f $BASENAME/$PROJECTTITLE:${PROJECT_BRANCH}-${BUILD_NUMBER}
+  docker push -f "$DOCKER_FULL_NAME"
   CMDRET=$?
   : $(( TRY++ ))
 done
 
 if [ $CMDRET -eq 0 ]; then
 	echo "Docker push complete at $(date +%H:%M:%S)"
-    echo "Removing local copy of image: $BASENAME/$PROJECTTITLE:${PROJECT_BRANCH}-${BUILD_NUMBER}"
-    docker rmi $BASENAME/$PROJECTTITLE:${PROJECT_BRANCH}-${BUILD_NUMBER}
+    echo "Removing local copy of image: $DOCKER_FULL_NAME"
+    docker rmi "$DOCKER_FULL_NAME"
 else
 	echo "*** ERROR! Docker push failed"
     exit 1
