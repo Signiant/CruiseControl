@@ -30,7 +30,7 @@ fi
 if [ $RETCODE -eq 0 ]; then
   cd "${BUILD_PATH}"
   echo "*** Executing from $(pwd)"
-  
+
   read-0() {
     while [ "$1" ]; do
       IFS=$'\0' read -r -d '' "$1" || return 1
@@ -39,7 +39,7 @@ if [ $RETCODE -eq 0 ]; then
   }
 
   echo "*** Retrieving values from $CFN_DEPLOY_RULES"
-  
+
   STACKNAME=$(cat $CFN_DEPLOY_RULES | shyaml get-value cloudformation.stack_name)
   echo "Stackname set to $STACKNAME"
   REGION=$(cat $CFN_DEPLOY_RULES | shyaml get-value cloudformation.region)
@@ -48,6 +48,11 @@ if [ $RETCODE -eq 0 ]; then
   echo "CFN Template name set to $CFN_TEMPLATE_NAME"
   CFN_TEMPLATE_FILE=${BUILD_PATH}/CFN/$CFN_TEMPLATE_NAME
   echo "Template path set to $CFN_TEMPLATE_FILE"
+
+
+  # In the next few sections, we try to find default values for things we need
+  # but may be omitted from the YAML file. If they're NOT omitted, then they
+  # will just be entered with the rest of the YAML parameters.
 
   CLUSTERPARAM=""
   CLUSTERVAL=$(cat $CFN_DEPLOY_RULES | shyaml get-value cloudformation.parameters.CLUSTERNAME 2>/dev/null)
@@ -91,31 +96,32 @@ if [ $RETCODE -eq 0 ]; then
   if [ -n "$IMAGE_NAME" ]; then
       RETVAL="$IMAGE_NAME"
   else
-      RETVAL=$(cat $CFN_DEPLOY_RULES | shyaml get-value cloudformation.parameters.IMAGENAME &>/dev/null)
+      $(cat $CFN_DEPLOY_RULES | shyaml get-value cloudformation.parameters.IMAGENAME &>/dev/null)
 
       if [ $? -eq 1 ]; then
           echo "*** ERROR - Could not determine Docker image name to use for the cluster ${CLUSTERVAL}"
           exit 1
       fi
-  fi
 
-  echo "Docker image set to ${RETVAL}"
-  IMAGEPARAM="ParameterKey=IMAGENAME,ParameterValue=$RETVAL,UsePreviousValue=false"
+      echo "Docker image set to ${RETVAL}"
+      IMAGEPARAM="ParameterKey=IMAGENAME,ParameterValue=$RETVAL,UsePreviousValue=false"
+
+  fi
 
   if [ -z "$STACKNAME" ] || [ -z "$REGION" ] || [ -z "$CFN_TEMPLATE_NAME" ]; then
     echo "*** ERROR - Could not extract variables from $CFN_DEPLOY_RULES"
     exit 1
   fi
-  
+
   echo "*** Checking if a stack exists with name $STACKNAME"
-  
+
   STACKSTATUS=$(aws cloudformation describe-stacks --stack-name $STACKNAME --region $REGION --output text --query 'Stacks[0].StackStatus' 2> /dev/null)
   STATUS=$?
   COMMAND="create-stack"
 
   if [ $STATUS -eq 0 ]; then
     echo "*** Stack with name $STACKNAME does exist, updating instead of creating"
-    
+
     COMMAND="update-stack"
 
     echo "*** Checking if update-stack can be performed on stack $STACKNAME ..."
@@ -141,7 +147,7 @@ if [ $RETCODE -eq 0 ]; then
   fi
 
   echo "*** Running $COMMAND on stack $STACKNAME"
-  
+
   STACKID=$(aws cloudformation $COMMAND --stack-name $STACKNAME --region $REGION --template-body file://${CFN_TEMPLATE_FILE} \
   --parameters ${CLUSTERPARAM} ${SUBNETSPARAM} ${LBSECPARAM} ${IMAGEPARAM} \
   $(cat $CFN_DEPLOY_RULES | shyaml key-values-0 cloudformation.parameters |
@@ -152,7 +158,7 @@ if [ $RETCODE -eq 0 ]; then
   echo $STACKID | grep -q "ValidationError"
 
   STATUS=$?
-  
+
   if [ $STATUS -eq 0 ]; then
     echo $STACKID | grep -q "No updates"
 
@@ -163,17 +169,17 @@ if [ $RETCODE -eq 0 ]; then
 
     echo "*** No updates performed, continuing ..."
   fi
-  
+
   echo "*** Command completed with return code $STATUS"
-  
+
   echo "*** Waiting to make sure the command $COMMAND completed successfully"
-  
+
   NEXT_WAIT_TIME=0
   MAX_WAIT_TIMES=10
   SLEEP_SECONDS=60
-  
+
   echo "*** This may take up to $(( $MAX_WAIT_TIMES * $SLEEP_SECONDS )) seconds..."
-  
+
   while [ $NEXT_WAIT_TIME -lt $MAX_WAIT_TIMES ]; do
     STATUS=$(aws cloudformation describe-stacks --stack-name $STACKNAME --region $REGION --query 'Stacks[0].StackStatus')
     echo $STATUS | grep "ROLLBACK"
@@ -201,7 +207,7 @@ if [ $RETCODE -eq 0 ]; then
 
     echo $STATUS | grep "COMPLETE"
     if [ $? -eq 0 ]; then
-      echo "*** Operation $COMMAND completed successfully" 
+      echo "*** Operation $COMMAND completed successfully"
       break
     else
       echo "Current stack status: $STATUS"
@@ -215,7 +221,7 @@ if [ ! -z "$SERVICE_ALARM_ENDPOINT" ]; then
   echo "************************************************************************"
   echo "********************** Creating CloudWatch Alarms **********************"
   echo "************************************************************************"
-  
+
   SERVICE_ALARM_TEMPLATE=${BUILD_PATH}/CFN/alarm-template.json
 
   echo "Found CloudWatch Alarms template, creating stack ..."
@@ -233,15 +239,15 @@ if [ ! -z "$SERVICE_ALARM_ENDPOINT" ]; then
 
   COMMAND="create-stack"
 
-  echo "*** Checking if the stack exists with name $STACKNAME-alarm"  
-  
+  echo "*** Checking if the stack exists with name $STACKNAME-alarm"
+
   STACKSTATUS=$(aws cloudformation describe-stacks --stack-name ${STACKNAME}-alarm --region $REGION --output text --query 'Stacks[0].StackStatus' 2> /dev/null)
   STATUS=$?
   COMMAND="create-stack"
 
   if [ $STATUS -eq 0 ]; then
     echo "*** Stack with name $STACKNAME does exist, updating instead of creating"
-    
+
     COMMAND="update-stack"
 
     echo "*** Checking if update-stack can be performed on stack ${STACKNAME}-alarm ..."
@@ -278,7 +284,7 @@ if [ ! -z "$SERVICE_ALARM_ENDPOINT" ]; then
   echo $STACKID | grep -q "ValidationError"
 
   STATUS=$?
-  
+
   if [ $STATUS -eq 0 ]; then
     echo $STACKID | grep -q "No updates"
 
@@ -289,17 +295,17 @@ if [ ! -z "$SERVICE_ALARM_ENDPOINT" ]; then
 
     echo "*** No updates performed, continuing ..."
   fi
-  
+
   echo "*** Command completed with return code $STATUS"
-  
+
   echo "*** Waiting to make sure the command $COMMAND completed successfully"
-  
+
   NEXT_WAIT_TIME=0
   MAX_WAIT_TIMES=10
   SLEEP_SECONDS=30
-  
+
   echo "*** This may take up to $(( $MAX_WAIT_TIMES * $SLEEP_SECONDS )) seconds..."
-  
+
   while [ $NEXT_WAIT_TIME -lt $MAX_WAIT_TIMES ]; do
     STATUS=$(aws cloudformation describe-stacks --stack-name ${STACKNAME}-alarm --region $REGION --query 'Stacks[0].StackStatus')
     echo $STATUS | grep "ROLLBACK"
@@ -327,7 +333,7 @@ if [ ! -z "$SERVICE_ALARM_ENDPOINT" ]; then
 
     echo $STATUS | grep "COMPLETE"
     if [ $? -eq 0 ]; then
-      echo "*** Operation $COMMAND completed successfully" 
+      echo "*** Operation $COMMAND completed successfully"
       break
     else
       echo "Current stack status: $STATUS"
