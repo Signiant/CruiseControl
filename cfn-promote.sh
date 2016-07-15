@@ -3,8 +3,10 @@
 # This script is called from Jenkins to promote the service and deploy using CloudFormation
 
 
-ENVIRONMENT=$1
-BUILD_PATH=$2
+ENVIRONMENT="$1"
+BUILD_PATH="$2"
+# image name is optional
+IMAGE_NAME="$3"
 
 CFN_DEPLOY_RULES="$(readlink -f "${BUILD_PATH}/deploy/${ENVIRONMENT}.cfn.yaml")"
 
@@ -86,6 +88,21 @@ if [ $RETCODE -eq 0 ]; then
   echo "Security group set to ${RETVAL}"
   LBSECPARAM="ParameterKey=LOADBALANCERSECURITYGROUP,ParameterValue=$RETVAL,UsePreviousValue=false"
 
+  IMAGEPARAM=""
+  if [ -n "$IMAGE_NAME" ]; then
+      RETVAL="$IMAGE_NAME"
+  else
+      RETVAL=$(cat $CFN_DEPLOY_RULES | shyaml get-value cloudformation.parameters.IMAGENAME &>/dev/null)
+
+      if [ $? -eq 1 ]; then
+          echo "*** ERROR - Could not determine Docker image name to use for the cluster ${CLUSTERVAL}"
+          exit 1
+      fi
+  fi
+
+  echo "Docker image set to ${RETVAL}"
+  IMAGEPARAM="ParameterKey=IMAGENAME,ParameterValue=$RETVAL,UsePreviousValue=false"
+
   if [ -z "$STACKNAME" ] || [ -z "$REGION" ] || [ -z "$CFN_TEMPLATE_NAME" ]; then
     echo "*** ERROR - Could not extract variables from $CFN_DEPLOY_RULES"
     exit 1
@@ -127,7 +144,7 @@ if [ $RETCODE -eq 0 ]; then
   echo "*** Running $COMMAND on stack $STACKNAME"
   
   STACKID=$(aws cloudformation $COMMAND --stack-name $STACKNAME --region $REGION --template-body file://${CFN_TEMPLATE_FILE} \
-  --parameters ${CLUSTERPARAM} ${SUBNETSPARAM} ${LBSECPARAM} \
+  --parameters ${CLUSTERPARAM} ${SUBNETSPARAM} ${LBSECPARAM} ${IMAGEPARAM} \
   $(cat $CFN_DEPLOY_RULES | shyaml key-values-0 cloudformation.parameters |
   while read-0 key value; do
     echo -n "ParameterKey=$key,ParameterValue=$value,UsePreviousValue=false "
