@@ -55,12 +55,12 @@ if [ $RETCODE -eq 0 ]; then
   if [ $? -eq 1 ]; then
     echo "Could not find ClusterName within parameters, constructing using ${CFN_DEPLOY_RULES}"
     CLUSTERVAL=$(cat $CFN_DEPLOY_RULES | shyaml get-value cloudformation.clusterName)
+    echo "Cluster name set to ${CLUSTERVAL}"
+    CLUSTERPARAM="ParameterKey=CLUSTERNAME,ParameterValue=$CLUSTERVAL,UsePreviousValue=false"
   fi
-  echo "Cluster name set to ${CLUSTERVAL}"
-  CLUSTERPARAM="ParameterKey=CLUSTERNAME,ParameterValue=$CLUSTERVAL,UsePreviousValue=false"
 
   SUBNETSPARAM=""
-  RETVAL=$(cat $CFN_DEPLOY_RULES | shyaml get-value cloudformation.parameters.LOADBALANCERSUBNETS &>/dev/null)
+  $(cat $CFN_DEPLOY_RULES | shyaml get-value cloudformation.parameters.LOADBALANCERSUBNETS &>/dev/null)
 
   if [ $? -eq 1 ]; then
     echo "Could not find Subnets within parameters, constructing based on cluster ${CLUSTERVAL}"
@@ -69,13 +69,12 @@ if [ $RETCODE -eq 0 ]; then
       echo "*** ERROR - Could not retrieve subnets from the cluster ${CLUSTERVAL}"
       exit 1
     fi
+    echo "Subnets set to ${RETVAL}"
+    SUBNETSPARAM="ParameterKey=LOADBALANCERSUBNETS,ParameterValue='${RETVAL}',UsePreviousValue=false"
   fi
-  echo "Subnets set to ${RETVAL}"
-  SUBNETSPARAM="ParameterKey=LOADBALANCERSUBNETS,ParameterValue='${RETVAL}',UsePreviousValue=false"
-
 
   LBSECPARAM=""
-  RETVAL=$(cat $CFN_DEPLOY_RULES | shyaml get-value cloudformation.parameters.LOADBALANCERSECURITYGROUP &>/dev/null)
+  $(cat $CFN_DEPLOY_RULES | shyaml get-value cloudformation.parameters.LOADBALANCERSECURITYGROUP &>/dev/null)
 
   if [ $? -eq 1 ]; then
     echo "Could not find Load Balancer Security Group within parameters, constructing based on cluster ${CLUSTERVAL}"
@@ -84,9 +83,9 @@ if [ $RETCODE -eq 0 ]; then
       echo "*** ERROR - Could not retrieve Load Balancer Security Group from the cluster ${CLUSTERVAL}"
       exit 1
     fi
+    echo "Security group set to ${RETVAL}"
+    LBSECPARAM="ParameterKey=LOADBALANCERSECURITYGROUP,ParameterValue=$RETVAL,UsePreviousValue=false"
   fi
-  echo "Security group set to ${RETVAL}"
-  LBSECPARAM="ParameterKey=LOADBALANCERSECURITYGROUP,ParameterValue=$RETVAL,UsePreviousValue=false"
 
   IMAGEPARAM=""
   if [ -n "$IMAGE_NAME" ]; then
