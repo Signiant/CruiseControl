@@ -94,18 +94,8 @@ if [ $RETCODE -eq 0 ]; then
 
   IMAGEPARAM=""
   if [ -n "$IMAGE_NAME" ]; then
-      RETVAL="$IMAGE_NAME"
-  else
-      $(cat $CFN_DEPLOY_RULES | shyaml get-value cloudformation.parameters.IMAGENAME &>/dev/null)
-
-      if [ $? -eq 1 ]; then
-          echo "*** ERROR - Could not determine Docker image name to use for the cluster ${CLUSTERVAL}"
-          exit 1
-      fi
-
-      echo "Docker image set to ${RETVAL}"
-      IMAGEPARAM="ParameterKey=IMAGENAME,ParameterValue=$RETVAL,UsePreviousValue=false"
-
+      echo "Docker image set to ${IMAGE_NAME}"
+      IMAGEPARAM="ParameterKey=IMAGENAME,ParameterValue=$IMAGE_NAME,UsePreviousValue=false"
   fi
 
   if [ -z "$STACKNAME" ] || [ -z "$REGION" ] || [ -z "$CFN_TEMPLATE_NAME" ]; then
