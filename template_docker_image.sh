@@ -29,7 +29,7 @@ if [ ! -z "$DOCKER_PROJECT_TITLE" ]; then
     echo "Project title changed to $PROJECTTITLE"
 fi
 
-BUILD_DIR="./$PROJECTTITLE"
+BUILD_DIR="./$PROJECTTITLE/app"
 echo "Docker build directory set to $BUILD_DIR"
 
 if [ ! -z "$DOCKER_BUILD_DIR" ]; then
