@@ -1,5 +1,14 @@
 #!/bin/bash
 
+# rather than change every echo statement...
+# alias stdout
+exec 3>&1
+# option to output everything to stderr
+# except things explicitly redirected to 3
+if [ -n "$REDIRECT_MESSAGES" ]; then
+    exec 1>&2
+fi
+
 echo "***********************************************************************"
 echo "****************** Configuring and Error Checking *********************"
 echo "***********************************************************************"
@@ -16,9 +25,18 @@ PROJECTTITLE=${PROJECT_TITLE}
 echo "Project title set to $PROJECTTITLE"
 
 if [ ! -z "$DOCKER_PROJECT_TITLE" ]; then
-	PROJECTTITLE="$DOCKER_PROJECT_TITLE"
-	echo "Project title changed to $PROJECTTITLE"
+    PROJECTTITLE="$DOCKER_PROJECT_TITLE"
+    echo "Project title changed to $PROJECTTITLE"
 fi
+
+BUILD_DIR="./$PROJECTTITLE/app"
+echo "Docker build directory set to $BUILD_DIR"
+
+if [ ! -z "$DOCKER_BUILD_DIR" ]; then
+    BUILD_DIR="./$DOCKER_BUILD_DIR"
+    echo "Docker build directory changed to $BUILD_DIR"
+fi
+
 
 DOCKER_REPO_SECURITY="private"
 
@@ -55,10 +73,11 @@ echo "Found."
 
 echo "Building image..."
 echo "Moving into app folder.."
-cd ./$PROJECTTITLE
-cd ./app
+cd "$BUILD_DIR"
+
+DOCKER_FULL_NAME="$BASENAME/$PROJECTTITLE:${PROJECT_BRANCH}-${BUILD_NUMBER}"
 echo "Starting docker build at $(date +%H:%M:%S)"
-docker build -t $BASENAME/$PROJECTTITLE:${PROJECT_BRANCH}-${BUILD_NUMBER} .
+docker build -t "$DOCKER_FULL_NAME" .
 CMDRET=$?
 
 echo "Docker build complete at $(date +%H:%M:%S)"
@@ -96,18 +115,21 @@ while [ $MAXTRIES -ne $TRY ] && [ $CMDRET -ne 0 ]; do
     echo "Push failed. Sleeping $DELAY seconds before trying again."
     sleep $DELAY
   fi
-  
+
   echo "Starting docker push attempt number ${TRY} at $(date +%H:%M:%S)"
-  docker push -f $BASENAME/$PROJECTTITLE:${PROJECT_BRANCH}-${BUILD_NUMBER}
+  docker push -f "$DOCKER_FULL_NAME"
   CMDRET=$?
-  (( TRY++ ))
+  : $(( TRY++ ))
 done
 
 if [ $CMDRET -eq 0 ]; then
 	echo "Docker push complete at $(date +%H:%M:%S)"
-    echo "Removing local copy of image: $BASENAME/$PROJECTTITLE:${PROJECT_BRANCH}-${BUILD_NUMBER}"
-    docker rmi $BASENAME/$PROJECTTITLE:${PROJECT_BRANCH}-${BUILD_NUMBER}
+    echo "Removing local copy of image: $DOCKER_FULL_NAME"
+    docker rmi "$DOCKER_FULL_NAME"
 else
 	echo "*** ERROR! Docker push failed"
     exit 1
 fi
+
+# finally, output the full name of container
+echo "$DOCKER_FULL_NAME" 1>&3
