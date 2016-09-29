@@ -170,9 +170,10 @@ if [ $RETCODE -eq 0 ]; then
 
   echo "*** This may take up to $(( $MAX_WAIT_TIMES * $SLEEP_SECONDS )) seconds..."
 
-  while [ $NEXT_WAIT_TIME -lt $MAX_WAIT_TIMES ]; do
+  while [ $NEXT_WAIT_TIME -le $MAX_WAIT_TIMES ]; do
     STATUS=$(aws cloudformation describe-stacks --stack-name $STACKNAME --region $REGION --query 'Stacks[0].StackStatus')
     echo $STATUS | grep "ROLLBACK"
+
     if [ $? -eq 0 ]; then
       RETCODE=1
       echo "*** ERROR - $COMMAND failed"
@@ -182,13 +183,16 @@ if [ $RETCODE -eq 0 ]; then
       STATUS=`aws cloudformation describe-stacks --stack-name $STACKNAME --region $REGION --query 'Stacks[0].StackStatus'`
       echo $STATUS | grep "FAILED"
       if [ $? -eq 0 ]; then
+        RETCODE=1
         echo "*** CRITICAL ERROR - rollback has failed"
       else
         echo "*** Stack rolled back"
       fi
+
+      echo "*** Stack operation failed. Printing events ..."
+      aws cloudformation describe-stack-events --stack-name $STACKID --region $REGION --output text --query 'StackEvents[].{Time:Timestamp,Resource:ResourceType,Status:ResourceStatus,Reason:ResourceStatusReason}'
+
       if [ $COMMAND = "create-stack" ]; then
-        echo "*** Stack creation failed. Printing events ..."
-        aws cloudformation describe-stack-events --stack-name $STACKID --region $REGION
         echo "*** Removing unstable stack ..."
         aws cloudformation delete-stack --stack-name $STACKID --region $REGION
       fi
@@ -206,7 +210,13 @@ if [ $RETCODE -eq 0 ]; then
   done
 fi
 
-if [ ! -z "$SERVICE_ALARM_ENDPOINT" ]; then
+if [ $NEXT_WAIT_TIME -ge $MAX_WAIT_TIMES ] && [ $STATUS != "COMPLETE" ]; then
+  # We have reached the max wait time and we are not yet complete
+  echo "*** Stack has not yet stabilized in $(( $MAX_WAIT_TIMES * $SLEEP_SECONDS )) seconds - check the cloudformation console or the ECS events tab for more detail"
+  RETCODE=1
+fi
+
+if [ ! -z "$SERVICE_ALARM_ENDPOINT" ] && [ $RETCODE -ne 1 ]; then
 
   echo "************************************************************************"
   echo "********************** Creating CloudWatch Alarms **********************"
@@ -296,7 +306,7 @@ if [ ! -z "$SERVICE_ALARM_ENDPOINT" ]; then
 
   echo "*** This may take up to $(( $MAX_WAIT_TIMES * $SLEEP_SECONDS )) seconds..."
 
-  while [ $NEXT_WAIT_TIME -lt $MAX_WAIT_TIMES ]; do
+  while [ $NEXT_WAIT_TIME -le $MAX_WAIT_TIMES ]; do
     STATUS=$(aws cloudformation describe-stacks --stack-name ${STACKNAME}-alarm --region $REGION --query 'Stacks[0].StackStatus')
     echo $STATUS | grep "ROLLBACK"
     if [ $? -eq 0 ]; then
@@ -312,9 +322,11 @@ if [ ! -z "$SERVICE_ALARM_ENDPOINT" ]; then
       else
         echo "*** Stack rolled back"
       fi
+
+      echo "*** Stack operation failed. Printing events ..."
+      aws cloudformation describe-stack-events --stack-name ${STACKNAME}-alarm  --region $REGION
+
       if [ $COMMAND = "create-stack" ]; then
-        echo "*** Stack creation failed. Printing events ..."
-        aws cloudformation describe-stack-events --stack-name ${STACKNAME}-alarm  --region $REGION -output text --query 'StackEvents[].{Time:Timestamp,Resource:ResourceType,Status:ResourceStatus,Reason:ResourceStatusReason}'
         echo "*** Removing unstable stack ..."
         aws cloudformation delete-stack --stack-name ${STACKNAME}-alarm --region $REGION
       fi
@@ -330,6 +342,12 @@ if [ ! -z "$SERVICE_ALARM_ENDPOINT" ]; then
     fi
     (( NEXT_WAIT_TIME++ )) && sleep $SLEEP_SECONDS
   done
+
+  if [ $NEXT_WAIT_TIME -ge $MAX_WAIT_TIMES ] && [ $STATUS != "COMPLETE" ]; then
+    # We have reached the max wait time and we are not yet complete
+    echo "*** Alarm Stack has not yet stabilized in $(( $MAX_WAIT_TIMES * $SLEEP_SECONDS )) seconds - check the cloudformation console or the ECS events tab for more detail"
+    RETCODE=1
+  fi
 fi
 
 exit $RETCODE
