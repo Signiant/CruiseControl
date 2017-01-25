@@ -40,7 +40,7 @@ For more information on dockercfg: https://coreos.com/os/docs/latest/registry-au
 
 Now we are ready to build the docker image. First step is to move into the project directory, and into the app folder. This is where we keep our Dockerfile for the services.
 
-The build is started by the command `docker build -t $BASENAME/$PROJECTTITLE:${PROJECT_BRANCH}-${BUILD_NUMBER} .` 
+The build is started by the command `docker build -t $BASENAME/$PROJECTTITLE:${PROJECT_BRANCH}-${BUILD_NUMBER} .`
 
 As you can see, the image repo is set to the basename, and the image name as the project's title we retrieve from Jenkins. We use the project's branch and build number as the tag to be able to differentiate images.
 
@@ -56,9 +56,14 @@ Once in a blue moon, the push may fail. In order to avoid building the entire pr
 
 ### `cfn-template.json`
 
-This template creates a task definition, a service, a load balancer and an optional Route53 entry. 
+This template creates a task definition, a service, a load balancer and an optional Route53 entry.
 
 It's important to note that the template outputs the service name which we will need to create the alarm for the service after this template's stack will be created.
+
+| Environment Variable | Required | Default                                                     | Usage                                                                                                         |
+|----------------------|----------|-------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
+| `TASK_ONLY`      | No       | false           | Set to True or False before calling.  If set, will assume only an ECS taskdef is being created, not a service    |
+| `SERVICE_ALARM_ENDPOINT` | No       | None        | Value must map to a valid value in the `SNSMap` in `alarm-template.json`.  If not set, no alarm stack will be created  |
 
 ### `alarm-template.json`
 
@@ -77,7 +82,7 @@ An alternative to this is to use a json file that contains all the parameters fo
 For more information on passing parameters into CloudFormation, use the following link:
 https://blogs.aws.amazon.com/application-management/post/Tx1A23GYVMVFKFD/Passing-Parameters-to-CloudFormation-Stacks-with-the-AWS-CLI-and-Powershell
 
-### `cfn-promote.sh` - This is where all the magic happens. 
+### `cfn-promote.sh` - This is where all the magic happens.
 
 This script needs 2 parameters passed into it. Those parameters are:
 1. `ENVIRONMENT`: The name or alias of the region to promote to. We use this name to decide which configuration file to use in order to promote a service to ECS
@@ -90,9 +95,9 @@ http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html
 
 The first steps are self explanatory. We check if our deployment rules file exists, then start extracting the values that are needed first from them.
 
-Since we create our cluster using a CloudFormation stack as well, that stack contains values that might change. (Such as the LoadBalancer security group, which gets created with the cluster). To reduce deployment errors due to modified parameters, we opted to retrieve the LoadBalancer security group and subnets from the cluster directly to use when promoting the service. We do that by describing the stack and saving the values of our filtered result. 
+Since we create our cluster using a CloudFormation stack as well, that stack contains values that might change. (Such as the LoadBalancer security group, which gets created with the cluster). To reduce deployment errors due to modified parameters, we opted to retrieve the LoadBalancer security group and subnets from the cluster directly to use when promoting the service. We do that by describing the stack and saving the values of our filtered result.
 
-After some error checking, we proceed to check the status of the service stack (if it exists). If the stack doesn't exist, we create it directly. If the stack exists, an update is performed instead. Before we can update though, we check the status of the stack since if a stack is in the process of updating or rolling back, we cannot issue an update. 
+After some error checking, we proceed to check the status of the service stack (if it exists). If the stack doesn't exist, we create it directly. If the stack exists, an update is performed instead. Before we can update though, we check the status of the stack since if a stack is in the process of updating or rolling back, we cannot issue an update.
 
 If the stack is in an updatable state, we then perform an `update-stack` operation. If the stack does not exist, the operating is create-stack instead. All the parameters are passed in at this point.
 
@@ -100,4 +105,4 @@ In case the same build plan was promoted again (for example, to rerun automation
 
 In case of an error, we wait for 5 minutes before checking to see if the stack rolled back successfully. Also, if the operation we used was `create-stack`, we output the stack events before we delete the stack since this stack will never be in an updatable state. (Only from failing to create-stack)
 
-The next steps create the alarms for the service only if an environment variable labeled `SERVICE_ALARM_ENDPOINT` exists, which contains the value of the SNS Subscription used in the template. The process is very similar to the previous steps. 
+The next steps create the alarms for the service only if an environment variable labeled `SERVICE_ALARM_ENDPOINT` exists, which contains the value of the SNS Subscription used in the template. The process is very similar to the previous steps.

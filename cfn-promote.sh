@@ -54,42 +54,48 @@ if [ $RETCODE -eq 0 ]; then
   # but may be omitted from the YAML file. If they're NOT omitted, then they
   # will just be entered with the rest of the YAML parameters.
 
-  CLUSTERPARAM=""
-  CLUSTERVAL=$(cat $CFN_DEPLOY_RULES | shyaml get-value cloudformation.parameters.CLUSTERNAME 2>/dev/null)
+  # We have some microservices that create ECS task defs only
+  # In these cases, there is no ELB to query or set a value on
+  if [ ! -z ${TASK_ONLY} ] && [ ${TASK_ONLY,,} == 'true' ]; then
+    echo "Task only service - not querying cluster for LB params"
+  else
+    CLUSTERPARAM=""
+    CLUSTERVAL=$(cat $CFN_DEPLOY_RULES | shyaml get-value cloudformation.parameters.CLUSTERNAME 2>/dev/null)
 
-  if [ $? -eq 1 ]; then
-    echo "Could not find ClusterName within parameters, constructing using ${CFN_DEPLOY_RULES}"
-    CLUSTERVAL=$(cat $CFN_DEPLOY_RULES | shyaml get-value cloudformation.clusterName)
-    echo "Cluster name set to ${CLUSTERVAL}"
-    CLUSTERPARAM="ParameterKey=CLUSTERNAME,ParameterValue=$CLUSTERVAL,UsePreviousValue=false"
-  fi
-
-  SUBNETSPARAM=""
-  $(cat $CFN_DEPLOY_RULES | shyaml get-value cloudformation.parameters.LOADBALANCERSUBNETS &>/dev/null)
-
-  if [ $? -eq 1 ]; then
-    echo "Could not find Subnets within parameters, constructing based on cluster ${CLUSTERVAL}"
-    RETVAL=$(aws cloudformation describe-stacks --stack-name ${CLUSTERVAL} --region $REGION --output text --query 'Stacks[0].Parameters[?ParameterKey==`Subnets`].ParameterValue')
-    if [ -z "$RETVAL" ]; then
-      echo "*** ERROR - Could not retrieve subnets from the cluster ${CLUSTERVAL}"
-      exit 1
+    if [ $? -eq 1 ]; then
+      echo "Could not find ClusterName within parameters, constructing using ${CFN_DEPLOY_RULES}"
+      CLUSTERVAL=$(cat $CFN_DEPLOY_RULES | shyaml get-value cloudformation.clusterName)
+      echo "Cluster name set to ${CLUSTERVAL}"
+      CLUSTERPARAM="ParameterKey=CLUSTERNAME,ParameterValue=$CLUSTERVAL,UsePreviousValue=false"
     fi
-    echo "Subnets set to ${RETVAL}"
-    SUBNETSPARAM="ParameterKey=LOADBALANCERSUBNETS,ParameterValue='${RETVAL}',UsePreviousValue=false"
-  fi
 
-  LBSECPARAM=""
-  $(cat $CFN_DEPLOY_RULES | shyaml get-value cloudformation.parameters.LOADBALANCERSECURITYGROUP &>/dev/null)
+    SUBNETSPARAM=""
+    $(cat $CFN_DEPLOY_RULES | shyaml get-value cloudformation.parameters.LOADBALANCERSUBNETS &>/dev/null)
 
-  if [ $? -eq 1 ]; then
-    echo "Could not find Load Balancer Security Group within parameters, constructing based on cluster ${CLUSTERVAL}"
-    RETVAL=$(aws cloudformation describe-stack-resources --stack-name ${CLUSTERVAL} --region $REGION --output text --query 'StackResources[?LogicalResourceId==`LbSecurityGroup`].PhysicalResourceId')
-    if [ -z "$RETVAL" ]; then
-      echo "*** ERROR - Could not retrieve Load Balancer Security Group from the cluster ${CLUSTERVAL}"
-      exit 1
+    if [ $? -eq 1 ]; then
+      echo "Could not find Subnets within parameters, constructing based on cluster ${CLUSTERVAL}"
+      RETVAL=$(aws cloudformation describe-stacks --stack-name ${CLUSTERVAL} --region $REGION --output text --query 'Stacks[0].Parameters[?ParameterKey==`Subnets`].ParameterValue')
+      if [ -z "$RETVAL" ]; then
+        echo "*** ERROR - Could not retrieve subnets from the cluster ${CLUSTERVAL}"
+        exit 1
+      fi
+      echo "Subnets set to ${RETVAL}"
+      SUBNETSPARAM="ParameterKey=LOADBALANCERSUBNETS,ParameterValue='${RETVAL}',UsePreviousValue=false"
     fi
-    echo "Security group set to ${RETVAL}"
-    LBSECPARAM="ParameterKey=LOADBALANCERSECURITYGROUP,ParameterValue=$RETVAL,UsePreviousValue=false"
+
+    LBSECPARAM=""
+    $(cat $CFN_DEPLOY_RULES | shyaml get-value cloudformation.parameters.LOADBALANCERSECURITYGROUP &>/dev/null)
+
+    if [ $? -eq 1 ]; then
+      echo "Could not find Load Balancer Security Group within parameters, constructing based on cluster ${CLUSTERVAL}"
+      RETVAL=$(aws cloudformation describe-stack-resources --stack-name ${CLUSTERVAL} --region $REGION --output text --query 'StackResources[?LogicalResourceId==`LbSecurityGroup`].PhysicalResourceId')
+      if [ -z "$RETVAL" ]; then
+        echo "*** ERROR - Could not retrieve Load Balancer Security Group from the cluster ${CLUSTERVAL}"
+        exit 1
+      fi
+      echo "Security group set to ${RETVAL}"
+      LBSECPARAM="ParameterKey=LOADBALANCERSECURITYGROUP,ParameterValue=$RETVAL,UsePreviousValue=false"
+    fi
   fi
 
   IMAGEPARAM=""
