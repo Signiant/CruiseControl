@@ -144,13 +144,21 @@ if [ $RETCODE -eq 0 ]; then
 
   echo "*** Running $COMMAND on stack $STACKNAME"
 
-  STACKID=$(aws cloudformation $COMMAND --stack-name $STACKNAME --region $REGION --template-body file://${CFN_TEMPLATE_FILE} \
-  --parameters ${CLUSTERPARAM} ${SUBNETSPARAM} ${LBSECPARAM} ${IMAGEPARAM} \
-  $(cat $CFN_DEPLOY_RULES | shyaml key-values-0 cloudformation.parameters |
-  while read-0 key value; do
-    echo -n "ParameterKey=$key,ParameterValue=$value,UsePreviousValue=false "
-  done) --output text 2>&1)
-
+  if [ ! -z ${TASK_ONLY} ] && [ ${TASK_ONLY,,} == 'true' ]; then
+    STACKID=$(aws cloudformation $COMMAND --stack-name $STACKNAME --region $REGION --template-body file://${CFN_TEMPLATE_FILE} \
+    --parameters \
+    $(cat $CFN_DEPLOY_RULES | shyaml key-values-0 cloudformation.parameters |
+    while read-0 key value; do
+      echo -n "ParameterKey=$key,ParameterValue=$value,UsePreviousValue=false "
+    done) --output text 2>&1)
+  else
+    STACKID=$(aws cloudformation $COMMAND --stack-name $STACKNAME --region $REGION --template-body file://${CFN_TEMPLATE_FILE} \
+    --parameters ${CLUSTERPARAM} ${SUBNETSPARAM} ${LBSECPARAM} \
+    $(cat $CFN_DEPLOY_RULES | shyaml key-values-0 cloudformation.parameters |
+    while read-0 key value; do
+      echo -n "ParameterKey=$key,ParameterValue=$value,UsePreviousValue=false "
+    done) --output text 2>&1)
+  fi
   echo $STACKID | grep -q "ValidationError"
 
   STATUS=$?
